@@ -340,7 +340,7 @@
     <section id="ims_usrloc_scscf.p.unreg_validity">
       <title>unreg_validity (int)</title>
       <para>Default validity time in seconds for unregister assignment to SCSCF </para>
-      <para><emphasis> Default value is 1800 </emphasis></para>
+      <para><emphasis> Default value is 2400 </emphasis></para>
       <example>
         <title>Set <varname>unreg_validity</varname> parameter</title>
         <programlisting format="linespecific">
@@ -353,7 +353,7 @@
     <section id="ims_usrloc_scscf.p.user_data_xsd">
       <title>user_data_xsd (string)</title>
       <para> </para>
-      <para><emphasis> Default value is 1800 </emphasis></para>
+      <para><emphasis> Default value is 2400 </emphasis></para>
       <example>
         <title>Set <varname>unreg_validity</varname> parameter</title>
         <programlisting format="linespecific">
