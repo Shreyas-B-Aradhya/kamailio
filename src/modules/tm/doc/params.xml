@@ -66,7 +66,7 @@ modparam("tm", "fr_timer", 10000)
 	    <title>Set <varname>fr_inv_timer</varname> parameter</title>
 	    <programlisting>
 ...
-modparam("tm", "fr_inv_timer", 180000)
+modparam("tm", "fr_inv_timer", 240000)
 ...
 	    </programlisting>
 	</example>
