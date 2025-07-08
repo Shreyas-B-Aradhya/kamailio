@@ -1226,7 +1226,7 @@ modparam("dispatcher", "ds_dns_mode", 2)
 		<title>Set the <quote>ds_dns_interval</quote> parameter</title>
 <programlisting format="linespecific">
 ...
-modparam("dispatcher", "ds_interval_mode", 1800)
+modparam("dispatcher", "ds_interval_mode", 2400)
 ...
 </programlisting>
 		</example>
