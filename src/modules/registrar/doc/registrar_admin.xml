@@ -148,7 +148,7 @@
 		<title>Set <varname>default_expires</varname> parameter</title>
 		<programlisting format="linespecific">
 ...
-modparam("registrar", "default_expires", 1800)
+modparam("registrar", "default_expires", 2400)
 ...
 </programlisting>
 		</example>
