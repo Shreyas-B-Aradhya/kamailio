@@ -696,7 +696,7 @@ modparam("mi_fifo", "fifo_name", "/tmp/kamailio_fifo")
 modparam("auth", "nonce_count", 1)
 modparam("auth", "qop", "auth")
 
-#!substdef "!MSRP_MIN_EXPIRES!1800!g"
+#!substdef "!MSRP_MIN_EXPIRES!2400!g"
 #!substdef "!MSRP_MAX_EXPIRES!3600!g"
 modparam("htable", "htable", "msrp=>size=8;autoexpire=MSRP_MAX_EXPIRES;")
 
