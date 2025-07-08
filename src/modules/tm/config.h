@@ -66,7 +66,7 @@
  *  and then wait state, so it will still be alive for either WT_TIME_OUT in
  *  the non-inv or "silent" inv. case and for FR_TIME_OUT + WT_TIME_OUT for an
  *  invite transaction (for which  we must wait for the neg. reply ack)*/
-#define MAX_INV_LIFETIME 180000	  /* ms, rfc min. C-timer value */
+#define MAX_INV_LIFETIME 240000	  /* ms, rfc min. C-timer value */
 #define MAX_NONINV_LIFETIME 32000 /* ms, rfc timer F value */
 
 /* when first reply is sent, this additional space is allocated so that
