@@ -403,7 +403,7 @@ modparam("presence", "max_expires", 3600)
         <title>Set <varname>min_expires</varname> parameter</title>
         <programlisting format="linespecific">
 ...
-modparam("presence", "min_expires", 1800)
+modparam("presence", "min_expires", 2400)
 ...
 </programlisting>
     </example>
@@ -435,7 +435,7 @@ modparam("presence", "min_expires", 1800)
         <title>Set <varname>min_expires</varname> parameter</title>
         <programlisting format="linespecific">
             ...
-            modparam("presence", "min_expires", 1800)
+            modparam("presence", "min_expires", 2400)
             ...
         </programlisting>
     </example>
