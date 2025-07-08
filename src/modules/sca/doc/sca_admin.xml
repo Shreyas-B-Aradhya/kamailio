@@ -141,7 +141,7 @@ modparam( "sca", "hash_table_size", 8 )
 		<title>Set <varname>call_info_max_expires</varname>:</title>
 		<programlisting format="linespecific">
 ...
-modparam( "sca", "call_info_max_expires", 1800 )
+modparam( "sca", "call_info_max_expires", 2400 )
 ...
 		</programlisting>
 		</example>
