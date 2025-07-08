@@ -194,7 +194,7 @@ modparam("sst", "enable_stats", 0)
 
 		<para>
 		<emphasis>
-			Default value is <quote>1800</quote> seconds.
+			Default value is <quote>2400</quote> seconds.
 		</emphasis>
 		</para>
 		<example>
