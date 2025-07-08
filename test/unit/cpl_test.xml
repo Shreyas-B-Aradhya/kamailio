@@ -11,7 +11,7 @@
       CSeq: 1 INVITE
       Contact: sip:alice@[local_ip]:[local_port]
       Max-Forwards: 5
-      Expires: 1800
+      Expires: 2400
       User-Agent: SIPp/Linux
       Content-Length: 0
       ]]>
