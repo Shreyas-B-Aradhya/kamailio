@@ -165,7 +165,7 @@
         maximum time an invite transaction can live from the moment of
         creation.
     </para>
-    <para>Default value: 180000.</para>
+    <para>Default value: 240000.</para>
     <para>Type: integer.</para>
     <para>
     </para>
