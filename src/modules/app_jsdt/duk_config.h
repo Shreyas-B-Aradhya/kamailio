@@ -1363,7 +1363,7 @@
 #endif
 
 #undef DUK_USE_UNION_INITIALIZERS
-#if defined(_MSC_VER) && (_MSC_VER >= 1800)
+#if defined(_MSC_VER) && (_MSC_VER >= 2400)
 /* VS2013+ supports union initializers but there's a bug involving union-inside-struct:
  * https://connect.microsoft.com/VisualStudio/feedback/details/805981
  * The bug was fixed (at least) in VS2015 so check for VS2015 for now:
@@ -2452,7 +2452,7 @@ typedef struct duk_hthread duk_context;
  * that too.  Android doesn't have log2; disable all of these for Android.
  */
 #if(defined(DUK_F_C99) || defined(DUK_F_CPP11)        \
-		|| (defined(_MSC_VER) && (_MSC_VER >= 1800))) \
+		|| (defined(_MSC_VER) && (_MSC_VER >= 2400))) \
 		&& !defined(DUK_F_ANDROID) && !defined(DUK_F_MINT)
 #if !defined(DUK_CBRT)
 #define DUK_CBRT cbrt
