@@ -99,7 +99,7 @@ int desc_time_order = 0; /*!< By default do not enable timestamp ordering */
 int usrloc_debug = 0;
 int scscf_support_wildcardPSI = 0;
 int unreg_validity =
-		1800; /*!< default validity time in secs for unreg assignment to SCSCF */
+		2400; /*!< default validity time in secs for unreg assignment to SCSCF */
 int maxcontact_3gpp = 0; /*!< max number of 3GPP contacts allowed per IMPU */
 int maxcontact = 0;		 /*!< max number of contacts allowed per IMPU */
 int maxcontact_behaviour =
