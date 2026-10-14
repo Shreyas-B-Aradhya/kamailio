@@ -164,6 +164,20 @@
 #define SIG_DEBUG
 #endif
 
+#ifdef ENABLE_LICENSE_CHECK
+/* License Headers*/
+#include "License_Checker.h"
+#include <pthread.h>
+#include <sys/wait.h>
+
+#define TOC_BUFFER_SIZE              30 
+#define APP_NAME_BUFFER_SIZE         10
+
+INT8 gsi8Appname[APP_NAME_BUFFER_SIZE] ="IMS";
+INT8 gsi8TOC[TOC_BUFFER_SIZE] ="Fri 2026-02-6 11:00:40 UTC";
+
+/*License Header */
+#endif
 
 static char help_msg[] =
 		"\
@@ -2274,7 +2288,24 @@ int main(int argc, char **argv)
 			exit(-1);
 		}
 	}
+		
+	#ifdef ENABLE_LICENSE_CHECK
+	/*License code */
+	setbuf(stdout, NULL);
+	setbuf(stderr, NULL);
+	
+	INT32 status = LICENSE_VOID;
+    status = checkLicense(gsi8Appname,gsi8TOC);
+    GetLicenseAPIVersionNumber();
+    printf("License Check Status: %ld \n", status);
 
+    if (status != LICENSE_VALID) {
+        printf("License Expired...!, Closing the app\n");
+        exit(1);
+    }
+	/* License code */
+	#endif
+	
 	/*init*/
 	time(&up_since);
 	creator_pid = getpid();
