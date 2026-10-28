@@ -40,7 +40,10 @@ static pv_export_t mod_pvs[] = {
 	{{"tpdu", sizeof("tpdu") - 1}, PVT_OTHER, pv_get_sms, pv_set_sms,
 				pv_parse_tpdu_name, 0, 0, 0},
 	{{"smsbody", sizeof("smsbody") - 1}, PVT_OTHER, pv_sms_body, 0, 0, 0, 0, 0},
-
+	
+	{{"smsstatusreport", sizeof("smsstatusreport") - 1}, PVT_OTHER,
+    		pv_sms_status_report, 0, 0, 0, 0, 0},
+			
 	{{0, 0}, 0, 0, 0, 0, 0, 0, 0}
 };
 

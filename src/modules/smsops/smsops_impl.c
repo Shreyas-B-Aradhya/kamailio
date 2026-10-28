@@ -77,7 +77,10 @@ enum SMS_DATA
 	SMS_TPDU_ORIGINATING_ADDRESS_FLAGS,
 	SMS_TPDU_DESTINATION_FLAGS,
 	SMS_RPDATA_ORIGINATOR_FLAGS,
-	SMS_RPDATA_DESTINATION_FLAGS
+	SMS_RPDATA_DESTINATION_FLAGS,
+	SMS_RPDATA_DESTINATION_FLAGS,
+	SMS_TPDU_SCTS,
+    SMS_TPDU_STATUS
 };
 
 // Types of the PDU-Message
@@ -143,6 +146,12 @@ typedef struct _sms_pdu
 	unsigned char originating_address_flags;
 	unsigned char destination_flags;
 	struct tm time; // Either SCTS (DELIVER) or VP (SUBMIT)
+	unsigned int scts_unixtime; // TP-SCTS source for SMS-STATUS-REPORT
+								// (original submission time, script-supplied
+								// as a unix timestamp - unlike DELIVER/
+								// SUBMIT-REPORT, a status report's SCTS is
+								// NOT "now", so it can't reuse EncodeTime())
+	unsigned char status;		// TP-ST for SMS-STATUS-REPORT
 } sms_pdu_t;
 
 // RP-Data of the message
@@ -686,7 +695,8 @@ static int DecodePhoneNumber(char *buffer, int len, str phone)
 }
 
 // Generate a 7 Byte Long Time
-static void EncodeTime(char *buffer)
+// Generate a 7 Byte Long Time from a given (GMT) unix timestamp.
+static void EncodeTime(time_t ts,char *buffer)
 {
 	time_t ts;
 	struct tm now;
@@ -709,6 +719,18 @@ static void EncodeTime(char *buffer)
 	i = now.tm_sec;
 	buffer[5] = (unsigned char)((((i % 10) << 4) | (i / 10)) & 0xff);
 	buffer[6] = 0; // Timezone, we use no time offset.
+}
+
+// Generate a 7 Byte Long Time (current time) - unchanged behavior for
+// existing callers (pv_sms_ack, pv_sms_body), now implemented on top of
+// EncodeTimeTS so the same packing logic can be reused for an arbitrary
+// timestamp (needed for SMS-STATUS-REPORT's TP-SCTS, which is the
+// *original* submission time, not "now").
+static void EncodeTime(char *buffer)
+{
+	time_t ts;
+	time(&ts);
+	EncodeTimeTS(ts, buffer);
 }
 
 static void DecodeTime(char *buffer, struct tm *decoded_time)
@@ -1326,6 +1348,128 @@ int pv_sms_body(struct sip_msg *msg, pv_param_t *param, pv_value_t *res)
 	return pv_get_strval(msg, param, res, &_smsops_sms_body);
 }
 
+static str _smsops_status_report_body = {0, 0};
+/*
+ * Creates the body for SMS-STATUS-REPORT from the constructed rp data.
+ *
+ * Uses the same $rpdata(...)/$tpdu(...) fields already used for
+ * $smsbody, plus the two new ones added for this purpose:
+ *   $rpdata(type)       = 1 (RP-DATA, Network to MS)
+ *   $rpdata(reference)  = RP transaction reference (1 byte)
+ *   $rpdata(originator) / $rpdata(origen_flags) = SMSC's own address (RP-OA)
+ *   $tpdu(type)         = 2 (TP-MTI=STATUS-REPORT) - combined with
+ *                         $tpdu(flags) for any additional bits, exactly
+ *                         like $smsbody does for DELIVER - no bits are
+ *                         forced here, unlike $smsbody's unconditional
+ *                         "| 0x4"; the script has full control.
+ *   $tpdu(reference)    = original client TP-MR, to be echoed back
+ *   $tpdu(destination) / $tpdu(destination_flags) = recipient (TP-RA)
+ *   $tpdu(scts)         = original submission time (unix timestamp)
+ *   $tpdu(status)       = TP-ST (0x00 = delivered)
+ *
+ * TP-DT (discharge/delivery time) is always "now", via EncodeTime() -
+ * same convention already used elsewhere in this file for timestamps
+ * that mean "the moment this PDU is being built".
+ */
+int pv_sms_status_report(struct sip_msg *msg, pv_param_t *param, pv_value_t *res)
+{
+	int buffer_size = 256, lenpos = 0, i = 0;
+
+	if(_smsops_status_report_body.s == NULL) {
+		_smsops_status_report_body.s = (char *)pkg_malloc(buffer_size);
+	}
+	if(!_smsops_status_report_body.s) {
+		LM_ERR("Error allocating %i bytes!\n", buffer_size);
+		return -1;
+	}
+	_smsops_status_report_body.len = 0;
+
+	if(!_smsops_rp_send_data) {
+		LM_ERR("No RP-Data set - cannot build SMS-STATUS-REPORT\n");
+		return -1;
+	}
+
+	////////////////////////////////////////////////
+	// RP-Data (Network to MS)
+	////////////////////////////////////////////////
+	_smsops_status_report_body.s[_smsops_status_report_body.len++] =
+			_smsops_rp_send_data->msg_type;
+	_smsops_status_report_body.s[_smsops_status_report_body.len++] =
+			_smsops_rp_send_data->reference;
+
+	// RP-OA (SMSC's own address)
+	lenpos = _smsops_status_report_body.len;
+	_smsops_status_report_body.s[_smsops_status_report_body.len++] = 0x00;
+	if(_smsops_rp_send_data->originator.len > 0) {
+		_smsops_status_report_body.s[_smsops_status_report_body.len++] =
+				_smsops_rp_send_data->originator_flags;
+		i = EncodePhoneNumber(_smsops_rp_send_data->originator,
+				&_smsops_status_report_body.s[_smsops_status_report_body.len],
+				buffer_size - _smsops_status_report_body.len);
+		_smsops_status_report_body.s[lenpos] = i + 1;
+		_smsops_status_report_body.len += i;
+	}
+
+	// RP-DA (network->MS never carries one - matches every capture, RP-DA
+	// length is always 0x00 on this leg)
+	lenpos = _smsops_status_report_body.len;
+	_smsops_status_report_body.s[_smsops_status_report_body.len++] = 0x00;
+	if(_smsops_rp_send_data->destination.len > 0) {
+		_smsops_status_report_body.s[_smsops_status_report_body.len++] =
+				_smsops_rp_send_data->destination_flags;
+		i = EncodePhoneNumber(_smsops_rp_send_data->destination,
+				&_smsops_status_report_body.s[_smsops_status_report_body.len],
+				buffer_size - _smsops_status_report_body.len);
+		_smsops_status_report_body.s[lenpos] = i + 1;
+		_smsops_status_report_body.len += i;
+	}
+
+	// RP-UD length - filled in after the TPDU below
+	lenpos = _smsops_status_report_body.len;
+	_smsops_status_report_body.s[_smsops_status_report_body.len++] = 0x00;
+
+	///////////////////////////////////////////////////
+	// TPDU: SMS-STATUS-REPORT
+	///////////////////////////////////////////////////
+	_smsops_status_report_body.s[_smsops_status_report_body.len++] =
+			_smsops_rp_send_data->pdu.msg_type | _smsops_rp_send_data->pdu.flags;
+
+	// TP-MR (echo the original client's TP-MR)
+	_smsops_status_report_body.s[_smsops_status_report_body.len++] =
+			_smsops_rp_send_data->pdu.reference;
+
+	// TP-RA (who the original SM was delivered to)
+	_smsops_status_report_body.s[_smsops_status_report_body.len++] =
+			_smsops_rp_send_data->pdu.destination.len;
+	_smsops_status_report_body.s[_smsops_status_report_body.len++] =
+			_smsops_rp_send_data->pdu.destination_flags;
+	_smsops_status_report_body.len +=
+			EncodePhoneNumber(_smsops_rp_send_data->pdu.destination,
+					&_smsops_status_report_body
+							 .s[_smsops_status_report_body.len],
+					buffer_size - _smsops_status_report_body.len);
+
+	// TP-SCTS (original submission time - script-supplied, NOT "now")
+	EncodeTimeTS((time_t)_smsops_rp_send_data->pdu.scts_unixtime,
+			&_smsops_status_report_body.s[_smsops_status_report_body.len]);
+	_smsops_status_report_body.len += 7;
+
+	// TP-DT (discharge/delivery time - always "now", this PDU is being
+	// built at the moment delivery was confirmed)
+	EncodeTime(&_smsops_status_report_body.s[_smsops_status_report_body.len]);
+	_smsops_status_report_body.len += 7;
+
+	// TP-ST
+	_smsops_status_report_body.s[_smsops_status_report_body.len++] =
+			_smsops_rp_send_data->pdu.status;
+
+	// Back-fill the RP-UD length now that the TPDU is complete
+	_smsops_status_report_body.s[lenpos] =
+			(unsigned char)(_smsops_status_report_body.len - lenpos - 1);
+
+	return pv_get_strval(msg, param, res, &_smsops_status_report_body);
+}
+
 int pv_get_sms(struct sip_msg *msg, pv_param_t *param, pv_value_t *res)
 {
 	if(param == NULL)
@@ -1367,6 +1511,12 @@ int pv_get_sms(struct sip_msg *msg, pv_param_t *param, pv_value_t *res)
 		case SMS_TPDU_REFERENCE:
 			return pv_get_sintval(
 					msg, param, res, (int)_smsops_rp_data->pdu.reference);
+		case SMS_TPDU_SCTS:
+			return pv_get_uintval(
+					msg, param, res, _smsops_rp_data->pdu.scts_unixtime);
+		case SMS_TPDU_STATUS:
+			return pv_get_sintval(
+					msg, param, res, (int)_smsops_rp_data->pdu.status);
 		case SMS_TPDU_PAYLOAD:
 			return pv_get_strval(
 					msg, param, res, &_smsops_rp_data->pdu.payload.sm);
@@ -1572,6 +1722,28 @@ int pv_set_sms(struct sip_msg *msg, pv_param_t *param, int op, pv_value_t *val)
 				return -1;
 			}
 			_smsops_rp_send_data->pdu.reference = (unsigned char)val->ri;
+			break;
+		case SMS_TPDU_SCTS:
+			if(val == NULL) {
+				_smsops_rp_send_data->pdu.scts_unixtime = 0;
+				return 0;
+			}
+			if(!(val->flags & PV_VAL_INT)) {
+				LM_ERR("Invalid value type\n");
+				return -1;
+			}
+			_smsops_rp_send_data->pdu.scts_unixtime = (unsigned int)val->ri;
+			break;
+		case SMS_TPDU_STATUS:
+			if(val == NULL) {
+				_smsops_rp_send_data->pdu.status = 0;
+				return 0;
+			}
+			if(!(val->flags & PV_VAL_INT)) {
+				LM_ERR("Invalid value type\n");
+				return -1;
+			}
+			_smsops_rp_send_data->pdu.status = (unsigned char)val->ri;
 			break;
 		case SMS_TPDU_VALIDITY:
 			if(val == NULL) {
@@ -1823,6 +1995,8 @@ int pv_parse_tpdu_name(pv_spec_p sp, str *in)
 		case 4:
 			if(strncmp(in->s, "type", 4) == 0)
 				sp->pvp.pvn.u.isname.name.n = SMS_TPDU_TYPE;
+			else if(strncmp(in->s, "scts", 4) == 0)
+				sp->pvp.pvn.u.isname.name.n = SMS_TPDU_SCTS;
 			else
 				goto error;
 			break;
@@ -1839,6 +2013,8 @@ int pv_parse_tpdu_name(pv_spec_p sp, str *in)
 				sp->pvp.pvn.u.isname.name.n = SMS_TPDU_CODING;
 			else if(strncmp(in->s, "origen", 6) == 0)
 				sp->pvp.pvn.u.isname.name.n = SMS_TPDU_ORIGINATING_ADDRESS;
+			else if(strncmp(in->s, "status", 6) == 0)
+				sp->pvp.pvn.u.isname.name.n = SMS_TPDU_STATUS;
 			else
 				goto error;
 			break;

@@ -39,5 +39,7 @@ int pv_set_sms(struct sip_msg *, pv_param_t *, int, pv_value_t *);
 int pv_sms_ack(struct sip_msg *, pv_param_t *, pv_value_t *);
 // Generate a SMS-Body
 int pv_sms_body(struct sip_msg *, pv_param_t *, pv_value_t *);
+// Generate an SMS-STATUS-REPORT body
+int pv_sms_status_report(struct sip_msg *, pv_param_t *, pv_value_t *);
 
 #endif
