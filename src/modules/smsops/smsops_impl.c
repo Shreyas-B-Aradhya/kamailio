@@ -696,7 +696,7 @@ static int DecodePhoneNumber(char *buffer, int len, str phone)
 
 // Generate a 7 Byte Long Time
 // Generate a 7 Byte Long Time from a given (GMT) unix timestamp.
-static void EncodeTime(time_t ts,char *buffer)
+static void EncodeTimeTS(time_t ts,char *buffer)
 {
 	time_t ts;
 	struct tm now;
